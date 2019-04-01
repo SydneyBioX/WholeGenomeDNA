@@ -1,0 +1,9 @@
+#!/bin/bash
+#PBS -P HeadNeck
+#PBS -l select=1:ncpus=1:mem=8GB
+#PBS -l walltime=2:00:00
+
+module load melt
+melt MakeVCF -genotypingdir $TRANSDIR -w $TRANSDIR -p $TRANSDIR -t $TRANSINFO -h $GENO
+
+

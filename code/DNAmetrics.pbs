@@ -1,0 +1,33 @@
+#!/bin/bash
+#PBS -P HeadNeck
+#PBS -l select=1:ncpus=1:mem=24GB
+#PBS -l walltime=8:00:00
+
+module load samtools
+module load picard
+module load R # Picard needs it.
+
+
+echo "Time: $(date). Begin metrics calculations $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+startingReads=$(echo "$(zcat $originalReadsFile | wc -l) / 4" | bc)
+usefulReads=$(echo "$(zcat $noDuplicatesFile | wc -l) / 4" | bc)
+duplicationRate=$(echo "scale=2; x=($startingReads - $usefulReads) / $startingReads; print 0; x;" | bc) # Print leading zero, which bc can't do easily.
+alignedReadsStats=$(samtools flagstat $alignmentsFile | head -n 11 | tail -n 2 | cut -d' ' -f 1)
+alignedReadsStats=($alignedReadsStats) # Convert to array.
+alignedReads=$(echo "${alignedReadsStats[0]} / 2 + ${alignedReadsStats[1]}" | bc) # Divide by two for paired reads.
+mappedRate=$(echo "scale=2; x=($alignedReads / $usefulReads); print 0; x;" | bc)
+sampleMetrics=${alignmentsFile/.bam/insertMetrics.txt}
+picard CollectInsertSizeMetrics I=$alignmentsFile O=$sampleMetrics H=${alignmentsFile/.bam/insertSizeHistogram.pdf} # Picard only outputs results to disk.
+insertSize=$(head -8 $sampleMetrics | tail -1 | cut -f 1) # First column of the eighth line.
+# Calculate approximate genome coverage from the median of three essential gene base positions.
+essentialRegions=(chr12:6536530-6536530 chr7:5529340-5529340 chr3:128798025-128798025)
+basesReads=()
+for region in ${essentialRegions[@]}
+do
+  baseReads=$(samtools depth -r $region $alignmentsFile | cut -f 3 -)
+  basesReads+=($baseReads)
+done
+coverage=$(Rscript -e 'cat(median(as.numeric(commandArgs()[7:9])))' ${basesReads[@]})
+
+echo -e "$SID\t$startingReads\t$usefulReads\t$duplicationRate\t$alignedReads\t$mappedRate\t$insertSize\t$coverage" >> /project/HeadNeck/DNAsequencing/DNAmetrics.txt
+echo "Time: $(date). End metrics calculations $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt

@@ -1,0 +1,20 @@
+#PBS -P HeadNeck
+#PBS -l select=1:ncpus=8:mem=42GB
+#PBS -l walltime=2:00:00
+
+module load R/3.5.2 # Segmentation is done with the copynumber package available from Bioconductor.
+module load circos
+module load gatk
+
+echo "Time: $(date). Begin purity and ploidy estimation $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+java -jar /home/dstr7320/software/amber-2.1.jar com.hartwig.hmftools.amber.AmberApplication -threads 8 -tumor ${SID}cancer -tumor_bam $tumourFile -reference ${SID}normal -reference_bam $normalFile -ref_genome /project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna -bed /project/HeadNeck/databases/hg38/GermlineHetPon.hg38.bed.gz -output_dir /project/HeadNeck/DNAsequencing/purityPloidy/amber
+java -jar /home/dstr7320/software/cobalt-1.5.jar com.hartwig.hmftools.cobalt.CountBamLinesApplication -threads 8 -tumor ${SID}cancer -tumor_bam $tumourFile -reference ${SID}normal -reference_bam $normalFile -gc_profile /project/HeadNeck/databases/hg38/GC_profile.hg38.1000bp.cnp -output_dir /project/HeadNeck/DNAsequencing/purityPloidy/cobalt
+
+# Get Strelka output into right format for PURPLE.
+gatk -T CombineVariants -R /project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --genotypemergeoption unsorted -V:snvs /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${SID}.somatic.snvs.vcf.gz -V:indels /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${SID}.somatic.indels.vcf.gz -o /scratch/HeadNeck/$SID.merged.vcf
+sed -i s/NORMAL/${SID}normal/g /scratch/HeadNeck/$SID.merged.vcf
+sed -i s/TUMOR/${SID}cancer/g /scratch/HeadNeck/$SID.merged.vcf
+java -cp /home/dstr7320/software/purple-2.22.jar com.hartwig.hmftools.purple.tools.AnnotateStrelkaWithAllelicDepth -in /scratch/HeadNeck/$SID.merged.vcf -out /scratch/HeadNeck/$SID.merged.annotated.vcf
+
+java -jar /home/dstr7320/software/purple-2.22.jar -threads 8 -tumor ${SID}cancer -reference ${SID}normal -amber /project/HeadNeck/DNAsequencing/purityPloidy/amber -cobalt /project/HeadNeck/DNAsequencing/purityPloidy/cobalt -gc_profile /project/HeadNeck/databases/hg38/GC_profile.hg38.1000bp.cnp -output_dir /project/HeadNeck/DNAsequencing/purityPloidy/purple -circos /usr/local/circos/0.69-3/bin/circos -somatic_vcf /scratch/HeadNeck/$SID.merged.annotated.vcf 
+echo "Time: $(date). End purity and ploidy estimation $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt

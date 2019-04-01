@@ -1,0 +1,15 @@
+#!/bin/bash
+#PBS -P HeadNeck
+#PBS -l select=1:ncpus=32:mem=96GB
+#PBS -l walltime=30:00:00
+
+module load bwa/0.7.17
+module load samtools
+
+alignPath=${R1/FASTQ/mapped} # Replace FASTQ directory by mapped directory in path.
+alignPath=${alignPath/_noDuplicates*/}.bam # Remove everything except sample ID and append .bam.
+
+echo "Time: $(date). Begin mapping $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+bwa mem  -t 32 -B 1 -O 1 -E 1 -L 2 -U 1 -M /project/HeadNeck/indexes/bwa/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna $R1 $R2 | samtools view -@ 32 -b -u - | samtools sort -@ 32 -l 4 -o $alignPath -
+samtools index $alignPath
+echo "Time: $(date). End mapping $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt

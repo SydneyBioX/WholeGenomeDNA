@@ -1,0 +1,20 @@
+#!/bin/bash
+#PBS -P HeadNeck
+#PBS -l select=1:ncpus=2:mem=800GB
+#PBS -l walltime=504:00:00
+
+module load samtools
+module load R
+
+# Calculate approximate genome coverage from the median of three essential gene base positions.
+essentialRegions=(chr12:6536530-6536530 chr7:5529340-5529340 chr3:128798025-128798025)
+basesReads=()
+for region in ${essentialRegions[@]}
+do
+  baseReads=$(samtools depth -r $region $INPUT | cut -f 3 -)
+  basesReads+=($baseReads)
+done
+COV=$(Rscript -e 'cat(median(as.numeric(commandArgs()[7:9])))' ${basesReads[@]})
+
+module load melt
+melt IndivAnalysis -c $COV -bamfile $INPUT -w $TRANSDIR -t $TRANSINFO -h $GENO

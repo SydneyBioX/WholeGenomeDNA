@@ -1,0 +1,21 @@
+#!/bin/bash
+#PBS -P HeadNeck
+#PBS -l select=1:ncpus=4:mem=700GB
+#PBS -l walltime=18:00:00
+
+module load bbmap
+R1=($R1)
+R2=($R2)
+R1output=/project/HeadNeck/DNAsequencing/FASTQ/${SID}_noDuplicates_R1.fastq.gz
+R2output=/project/HeadNeck/DNAsequencing/FASTQ/${SID}_noDuplicates_R2.fastq.gz
+
+echo "Time: $(date). Begin read duplicate removal for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+if [ ${#R1[@]} -gt 1 ]
+then
+  cat ${R1[@]} > /scratch/HeadNeck/${SID}_merged_R1.fastq.gz
+  cat ${R2[@]} > /scratch/HeadNeck/${SID}_merged_R2.fastq.gz
+  clumpify.sh -Xmx512g t=4 in1=/scratch/HeadNeck/${SID}_merged_R1.fastq.gz in2=/scratch/HeadNeck/${SID}_merged_R2.fastq.gz out1=$R1output out2=$R2output dedupe subs=1 # Clumpify can't handle process substitution.
+else
+  clumpify.sh -Xmx512g t=4 in1=$R1 in2=$R2 out1=$R1output out2=$R2output dedupe subs=1
+fi
+echo "Time: $(date). End read duplicate removal for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt

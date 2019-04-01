@@ -1,0 +1,17 @@
+#!/bin/bash
+#PBS -P HeadNeck
+#PBS -l select=1:ncpus=32:mem=96GB
+#PBS -l walltime=10:00:00
+
+module load gridss
+module load bwa
+module load R
+
+assemblyPath=${INPUT/mapped/assembled}
+assemblyPath=${assemblyPath/bam/assembly.bam}
+SVpath=${INPUT/mapped/structuralVariants} # Replace mapped directory by variants directory in path.
+SVpath=${SVpath/bam/vcf} # bam by vcf.
+
+echo "Time: $(date). Begin structural variant detection for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+java -cp $GRIDSS_JAR gridss.CallVariants INPUT=$INPUT OUTPUT=$SVpath REFERENCE_SEQUENCE=/project/StatBio/indexes/bwa/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna BLACKLIST=/project/HeadNeck/problemRegions/hg38/ENCFF419RSJ.bed ASSEMBLY=$assemblyPath WORKING_DIR=/project/HeadNeck/DNAsequencing/structuralVariants TMP_DIR=/scratch/HeadNeck WORKER_THREADS=32
+echo "Time: $(date). Complete structural variant detection for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
