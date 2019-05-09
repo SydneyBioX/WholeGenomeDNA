@@ -1,9 +1,10 @@
 #!/bin/bash
 #PBS -P HeadNeck
-#PBS -l select=1:ncpus=32:mem=84GB
-#PBS -l walltime=2:00:00
+#PBS -l select=1:ncpus=8:mem=40GB
+#PBS -l walltime=8:00:00
 
 module load strelka/2.9.9
+module load bcftools
 
 echo "Time: $(date). Begin germline Single Nucleotide Variant detection for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
 configureStrelkaGermlineWorkflow.py --referenceFasta=/project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --bam=$normalFile --runDir=/scratch/HeadNeck/g/$SID/
@@ -11,7 +12,8 @@ if [-d /scratch/HeadNeck/g/$SID/ ] # Strelka will throw an error. Directory must
 then
   rm -r /scratch/HeadNeck/g/$SID/
 fi
-/scratch/HeadNeck/g/$SID/runWorkflow.py -m local -j 32
+/scratch/HeadNeck/g/$SID/runWorkflow.py -m local -j 8
 rename S1 $SID /scratch/HeadNeck/g/$SID/results/variants/* # File output by Strelka always has S1 in its name. User can't specify results output name.
 mv /scratch/HeadNeck/g/$SID/results/variants/genome.$SID* /project/HeadNeck/DNAsequencing/singleNucleotideVariants/
+bcftools view -f PASS -z -o /project/HeadNeck/DNAsequencing/singleNucleotideVariants/genome.$SID.candidates.vcf.gz -O v /project/HeadNeck/DNAsequencing/singleNucleotideVariants/genome.$SID.vcf.gz
 echo "Time: $(date). Complete germline Single Nucleotide Variant detection for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt

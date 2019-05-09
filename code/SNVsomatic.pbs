@@ -1,9 +1,10 @@
 #!/bin/bash
 #PBS -P HeadNeck
-#PBS -l select=1:ncpus=32:mem=84GB
-#PBS -l walltime=8:00:00
+#PBS -l select=1:ncpus=8:mem=40GB
+#PBS -l walltime=24:00:00
 
 module load strelka/2.9.9
+module load bcftools
 
 echo "Time: $(date). Begin somatic Single Nucleotide Variant detection for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
 configureStrelkaSomaticWorkflow.py --referenceFasta=/project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --normalBam=$normalFile --tumorBam=$tumourFile --runDir=/scratch/HeadNeck/s/$SID/
@@ -11,7 +12,9 @@ if [-d /scratch/HeadNeck/s/$SID/ ] # Strelka will throw an error. Directory must
 then
   rm -r /scratch/HeadNeck/s/$SID/
 fi
-/scratch/HeadNeck/s/$SID/runWorkflow.py -m local -j 32
+/scratch/HeadNeck/s/$SID/runWorkflow.py -m local -j 8
 rename somatic ${SID}.somatic /scratch/HeadNeck/s/$SID/results/variants/*
 mv /scratch/HeadNeck/s/$SID/results/variants/* /project/HeadNeck/DNAsequencing/singleNucleotideVariants/
+bcftools view -f PASS -z -o /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${SID}.somatic.snvs.candidates.vcf.gz -O z /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${SID}.somatic.snvs.vcf.gz
+bcftools view -f PASS -z -o /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${SID}.somatic.indels.candidates.vcf.gz -O z /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${SID}.somatic.indels.vcf.gz
 echo "Time: $(date). Complete somatic Single Nucleotide Variant detection for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
