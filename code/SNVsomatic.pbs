@@ -1,20 +1,21 @@
 #!/bin/bash
 #PBS -P HeadNeck
+#PBS -q scavenger
 #PBS -l select=1:ncpus=8:mem=40GB
-#PBS -l walltime=24:00:00
+#PBS -l walltime=22:00:00
 
 module load strelka/2.9.9
 module load bcftools
 
-echo "Time: $(date). Begin somatic Single Nucleotide Variant detection for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
-configureStrelkaSomaticWorkflow.py --referenceFasta=/project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --normalBam=$normalFile --tumorBam=$tumourFile --runDir=/scratch/HeadNeck/s/$SID/
-if [-d /scratch/HeadNeck/s/$SID/ ] # Strelka will throw an error. Directory must be empty.
+echo "Time: $(date). Begin somatic Single Nucleotide Variant detection for $outputID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+if [ -d /scratch/HeadNeck/s/$outputID/ ] # Strelka will throw an error. Directory must be empty.
 then
-  rm -r /scratch/HeadNeck/s/$SID/
+  rm -r /scratch/HeadNeck/s/$outputID/
 fi
-/scratch/HeadNeck/s/$SID/runWorkflow.py -m local -j 8
-rename somatic ${SID}.somatic /scratch/HeadNeck/s/$SID/results/variants/*
-mv /scratch/HeadNeck/s/$SID/results/variants/* /project/HeadNeck/DNAsequencing/singleNucleotideVariants/
-bcftools view -f PASS -z -o /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${SID}.somatic.snvs.candidates.vcf.gz -O z /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${SID}.somatic.snvs.vcf.gz
-bcftools view -f PASS -z -o /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${SID}.somatic.indels.candidates.vcf.gz -O z /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${SID}.somatic.indels.vcf.gz
-echo "Time: $(date). Complete somatic Single Nucleotide Variant detection for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+configureStrelkaSomaticWorkflow.py --referenceFasta=/project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --normalBam=$normalFile --tumorBam=$tumourFile --runDir=/scratch/HeadNeck/s/$outputID/
+/scratch/HeadNeck/s/$outputID/runWorkflow.py -m local -j 8
+rename somatic ${outputID}.somatic /scratch/HeadNeck/s/$outputID/results/variants/*
+mv /scratch/HeadNeck/s/$outputID/results/variants/* /project/HeadNeck/DNAsequencing/singleNucleotideVariants/
+bcftools view -f PASS -o /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${outputID}.somatic.snvs.candidates.vcf.gz -O z /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${outputID}.somatic.snvs.vcf.gz
+bcftools view -f PASS -o /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${outputID}.somatic.indels.candidates.vcf.gz -O z /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${outputID}.somatic.indels.vcf.gz
+echo "Time: $(date). Complete somatic Single Nucleotide Variant detection for $outputID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt

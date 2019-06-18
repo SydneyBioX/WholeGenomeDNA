@@ -1,22 +1,21 @@
 #!/bin/bash
 #PBS -P HeadNeck
-#PBS -q scavenger
-#PBS -l select=1:ncpus=8:mem=30GB
-#PBS -l walltime=22:00:00
+#PBS -l select=1:ncpus=8:mem=50GB
+#PBS -l walltime=72:00:00
 
 module load gridss
 module load bwa
 module load R
 module load bcftools
 
-assemblyPath=/project/HeadNeck/DNAsequencing/assembled/${patientID}assembly.bam
+assemblyPath=/scratch/HeadNeck/DNAsequencing/assembled/${patientID}assembly.bam
 SVpath=/project/HeadNeck/DNAsequencing/structuralVariants/${patientID}structural.vcf # Replace mapped directory by variants directory in path.
-annoSVpath=${SVpath/.vcf/anno.vcf} # Annotated VCF.
-retroSVpath=${annoSVpath/anno/annoRetro} # Annotated with Retrotransposons VCF.
+annoSVpath=${SVpath/.vcf/Annotated.vcf} # Annotated VCF.
+retroSVpath=${annoSVpath/Annotated/AnnotatedRetro} # Annotated with Retrotransposons VCF.
 
 echo "Time: $(date). Begin structural variant detection for $patientID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
 java -cp $GRIDSS_JAR gridss.CallVariants $inputString $labelString OUTPUT=$SVpath REFERENCE_SEQUENCE=/project/StatBio/indexes/bwa/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna BLACKLIST=/project/HeadNeck/problemRegions/hg38/ENCFF419RSJ.bed ASSEMBLY=$assemblyPath WORKING_DIR=/project/HeadNeck/DNAsequencing/structuralVariants TMP_DIR=/scratch/HeadNeck WORKER_THREADS=8
 bcftools view -f PASS -o /project/HeadNeck/DNAsequencing/structuralVariants/${patientID}structural.vcf.gz -O z /project/HeadNeck/DNAsequencing/structuralVariants/${patientID}structural.vcf
-# java -cp $GRIDSS_JAR gridss.AnnotateUntemplatedSequence INPUT=$SVpath REFERENCE_SEQUENCE=/project/StatBio/indexes/bwa/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna OUTPUT=$annoSVpath WORKER_THREADS=12
+# java -cp $GRIDSS_JAR gridss.AnnotateUntemplatedSequence INPUT=$SVpath REFERENCE_SEQUENCE=/project/StatBio/indexes/bwa/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna OUTPUT=$annoSVpath WORKER_THREADS=8
 # /path/to/gridss_annotate_insertions_repeatmaster.R --input $annoSVpath --output $retroSVpath --repeatmasker /path/to/hg38.fa.out.gz --scriptdir /path/to/otherLooseRscipts/
 echo "Time: $(date). Complete structural variant detection for $patientID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt

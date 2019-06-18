@@ -1,13 +1,13 @@
 #!/bin/bash
 #PBS -P HeadNeck
 #PBS -l select=1:ncpus=4:mem=700GB
-#PBS -l walltime=18:00:00
+#PBS -l walltime=25:00:00
 
 module load bbmap
 R1=($R1)
 R2=($R2)
-R1output=/project/HeadNeck/DNAsequencing/FASTQ/${SID}_noDuplicates_R1.fastq.gz
-R2output=/project/HeadNeck/DNAsequencing/FASTQ/${SID}_noDuplicates_R2.fastq.gz
+R1output=/scratch/HeadNeck/DNAsequencing/FASTQ/${SID}_noDuplicates_R1.fastq.gz
+R2output=/scratch/HeadNeck/DNAsequencing/FASTQ/${SID}_noDuplicates_R2.fastq.gz
 
 echo "Time: $(date). Begin read duplicate removal for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
 if [ ${#R1[@]} -gt 1 ]
