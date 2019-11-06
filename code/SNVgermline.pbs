@@ -1,20 +1,20 @@
 #!/bin/bash
-#PBS -P HeadNeck
-#PBS -q scavenger
-#PBS -l select=1:ncpus=8:mem=40GB
-#PBS -l walltime=8:00:00
+#PBS -l select=1:ncpus=4:mem=40GB
+#PBS -l walltime=7:00:00
 
 module load strelka/2.9.9
 module load bcftools
+temporaryDir=${projectDir/project/scratch/}
 
-echo "Time: $(date). Begin germline Single Nucleotide Variant detection for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
-if [ -d /scratch/HeadNeck/g/$SID/ ] # Strelka will throw an error. Directory must be empty.
+echo "Time: $(date). Begin germline Single Nucleotide Variant detection for $SID." >> $projectDir/DNAlog.txt
+if [ -d $temporaryDir/g/$SID/ ] # Strelka will throw an error. Directory must be empty.
 then
-  rm -r /scratch/HeadNeck/g/$SID/
+  rm -r $temporaryDir/g/$SID/
 fi
-configureStrelkaGermlineWorkflow.py --referenceFasta=/project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --bam=$normalFile --runDir=/scratch/HeadNeck/g/$SID/
-/scratch/HeadNeck/g/$SID/runWorkflow.py -m local -j 8
-rename S1.vcf $SID.vcf /scratch/HeadNeck/g/$SID/results/variants/* # File output by Strelka always has S1 in its name. User can't specify results output name.
-mv /scratch/HeadNeck/g/$SID/results/variants/genome.$SID* /project/HeadNeck/DNAsequencing/singleNucleotideVariants/
-bcftools view -f PASS -o /project/HeadNeck/DNAsequencing/singleNucleotideVariants/genome.$SID.candidates.vcf.gz -O z /project/HeadNeck/DNAsequencing/singleNucleotideVariants/genome.$SID.vcf.gz
-echo "Time: $(date). Complete germline Single Nucleotide Variant detection for $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+configureStrelkaGermlineWorkflow.py --referenceFasta=/project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --bam=$normalFile --runDir=$temporaryDir/g/$SID/
+$temporaryDir/g/$SID/runWorkflow.py -m local -j 4
+rename S1.vcf $SID.vcf $temporaryDir/g/$SID/results/variants/* # File output by Strelka always has S1 in its name. User can't specify results output name.
+mv $temporaryDir/g/$SID/results/variants/genome.$SID* $projectDir/singleNucleotideVariants/
+bcftools view -f PASS -o $projectDir/singleNucleotideVariants/genome.$SID.candidates.vcf.gz -O z $projectDir/singleNucleotideVariants/genome.$SID.vcf.gz
+bcftools index -t $projectDir/singleNucleotideVariants/genome.$SID.candidates.vcf.gz
+echo "Time: $(date). Complete germline Single Nucleotide Variant detection for $SID." >> $projectDir/DNAlog.txt

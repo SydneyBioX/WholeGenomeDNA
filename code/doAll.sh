@@ -2,6 +2,11 @@
 
 # 1: Duplicate Removal and Merging
 
+projectName=$1
+projectDir=$2
+scriptsDir=$3
+temporaryDir=${projectDir/project/scratch/}
+
 while IFS=$'\t' read -r -a sampleNameAndFiles
 do
   R1reads=()
@@ -17,9 +22,9 @@ do
 
   R1reads=${R1reads[@]} # Convert from array to space-delimited string.
   R2reads=${R2reads[@]}
-  jobID=$(qsub -v R1="$R1reads",R2="$R2reads",SID=$sampleName removeDuplicates.pbs)
+  jobID=$(qsub -v R1="$R1reads",R2="$R2reads",SID=$sampleName,projectDir="$projectDir",scriptsDir="$scriptsDir" -P $projectName $scriptsDir/removeDuplicates.pbs)
   allDuplicateJobs+=($jobID)
-done < /project/HeadNeck/DNAsequencing/samplesInputs.txt
+done < $projectDir/samplesInputs.txt
 
 # 2: Read Alignment
 
@@ -27,12 +32,12 @@ index=0
 while IFS=$'\t' read -r -a sampleNameAndFiles
 do
   sampleName=${sampleNameAndFiles[0]}
-  R1=/scratch/HeadNeck/DNAsequencing/FASTQ/${sampleName}_noDuplicates_R1.fastq.gz
-  R2=/scratch/HeadNeck/DNAsequencing/FASTQ/${sampleName}_noDuplicates_R2.fastq.gz
-  jobID=$(qsub -W depend=afterok:${allDuplicateJobs[$index]} -v R1=$R1,R2=$R2,SID=$sampleName map.pbs)
+  R1=$temporaryDir/FASTQ/${sampleName}_noDuplicates_R1.fastq.gz
+  R2=$temporaryDir/FASTQ/${sampleName}_noDuplicates_R2.fastq.gz
+  jobID=$(qsub -W depend=afterok:${allDuplicateJobs[$index]} -v R1=$R1,R2=$R2,SID=$sampleName,projectDir="$projectDir",scriptsDir="$scriptsDir" -P $projectName $scriptsDir/map.pbs)
   allMapJobs+=($jobID)
   index=$((index+1))
-done < /project/HeadNeck/DNAsequencing/samplesInputs.txt
+done < $projectDir/samplesInputs.txt
 
 # 3: DNA Metics Calculation
 
@@ -43,24 +48,24 @@ do
 
   if [ ${#sampleNameAndFiles[@]} -gt 4 ]
   then
-    originalReadsFile=/scratch/HeadNeck/${sampleName}_merged_R1.fastq.gz
+    originalReadsFile=$temporaryDir/merged/${sampleName}_merged_R1.fastq.gz
   else
     originalReadsFile=${sampleNameAndFiles[2]}
   fi
 
-  noDuplicatesFile=/scratch/HeadNeck/DNAsequencing/FASTQ/${sampleName}_noDuplicates_R1.fastq.gz
-  alignmentsFile=/scratch/HeadNeck/DNAsequencing/mapped/${sampleName}.bam
+  noDuplicatesFile=$temporaryDir/FASTQ/${sampleName}_noDuplicates_R1.fastq.gz
+  alignmentsFile=$temporaryDir/mapped/${sampleName}.bam
 
-  qsub -W depend=afterok:${allMapJobs[$index]]} -v originalReadsFile=$originalReadsFile,noDuplicatesFile=$noDuplicatesFile,alignmentsFile=$alignmentsFile,SID=$sampleName DNAmetrics.pbs
-done < /project/HeadNeck/DNAsequencing/samplesInputs.txt
+  qsub -W depend=afterok:${allMapJobs[$index]]} -v originalReadsFile=$originalReadsFile,noDuplicatesFile=$noDuplicatesFile,alignmentsFile=$alignmentsFile,SID=$sampleName,projectDir="$projectDir",scriptsDir="$scriptsDir" -P $projectName $scriptsDir/DNAmetrics.pbs
+done < $projectDir/samplesInputs.txt
 
-echo -e "Sample ID\tStarting Reads\tUseful Reads\tDuplication Rate\tAligned Reads\tMapped Rate\tMedian Insert Size\tEstimated Coverage" > /project/HeadNeck/DNAsequencing/DNAmetrics.txt
+echo -e "Sample ID\tStarting Reads\tUseful Reads\tDuplication Rate\tAligned Reads\tMapped Rate\tMedian Insert Size\tEstimated Coverage" > $projectDir/DNAmetrics.txt
 
 # 4: Short Variant Calling
 
 # Germline
-sampleIDs=$(cut -f 1 /project/HeadNeck/DNAsequencing/samplesInputs.txt) 
-sampleTypes=$(cut -f 2 /project/HeadNeck/DNAsequencing/samplesInputs.txt)
+sampleIDs=$(cut -f 1 $projectDir/samplesInputs.txt) 
+sampleTypes=$(cut -f 2 $projectDir/samplesInputs.txt)
 sampleIDs=($sampleIDs)
 sampleTypes=($sampleTypes)
 for((sampleIndex = 0; sampleIndex < ${#sampleIDs[@]}; sampleIndex++))
@@ -68,16 +73,16 @@ do # Each normal sample versus the human genome reference.
 {
   if [ ${sampleTypes[$sampleIndex]} == "Normal" ]
   then
-    normalFile=/scratch/HeadNeck/DNAsequencing/mapped/${sampleIDs[$sampleIndex]}.bam
-    qsub -W depend=afterok:${allMapJobs[$sampleIndex]} -v normalFile=$normalFile,SID=${sampleIDs[$sampleIndex]} SNVgermline.pbs
+    normalFile=$temporaryDir/mapped/${sampleIDs[$sampleIndex]}.bam
+    qsub -W depend=afterok:${allMapJobs[$sampleIndex]} -v normalFile=$normalFile,SID=${sampleIDs[$sampleIndex]},projectDir="$projectDir",scriptsDir="$scriptsDir" -P $projectName $scriptsDir/SNVgermline.pbs
   fi
 }
 done
 
 # Somatic
-NormalIDs=$(cut -f 3 /project/HeadNeck/DNAsequencing/patientsSamples.txt)
-TumourIDs=$(cut -f 4 /project/HeadNeck/DNAsequencing/patientsSamples.txt)
-outputIDs=$(cut -f 5 /project/HeadNeck/DNAsequencing/patientsSamples.txt)
+NormalIDs=$(cut -f 3 $projectDir/patientsSamples.txt)
+TumourIDs=$(cut -f 4 $projectDir/patientsSamples.txt)
+outputIDs=$(cut -f 5 $projectDir/patientsSamples.txt)
 NormalIDs=($NormalIDs)
 TumourIDs=($TumourIDs)
 outputIDs=($outputIDs)
@@ -86,17 +91,15 @@ allMapJobsString=$(join : ${allMapJobs[@]})
 for((sampleIndex = 0; sampleIndex < ${#outputIDs[@]}; sampleIndex++))
 do # Each normal and tumour pair.
 {
-  normalFile=/scratch/HeadNeck/DNAsequencing/mapped/${NormalIDs[$sampleIndex]}.bam
-  tumourFile=/scratch/HeadNeck/DNAsequencing/mapped/${TumourIDs[$sampleIndex]}.bam
+  normalFile=$temporaryDir/mapped/${NormalIDs[$sampleIndex]}.bam
+  tumourFile=$temporaryDir/mapped/${TumourIDs[$sampleIndex]}.bam
   outputID=${outputIDs[$sampleIndex]}
-  qsub -W depend=afterok:$allMapJobsString -v normalFile=$normalFile,tumourFile=$tumourFile,outputID=$outputID SNVsomatic.pbs
+  qsub -W depend=afterok:$allMapJobsString -v normalFile=$normalFile,tumourFile=$tumourFile,outputID=$outputID,projectDir="$projectDir",scriptsDir="$scriptsDir" -P $projectName $scriptsDir/SNVsomatic.pbs
 }
 done
 
 # 5: Structural Variant Calling
 
-patientIDs=$(cut -f 1 /project/HeadNeck/DNAsequencing/patientsSamples.txt)
-patientIDs=($patientIDs)
 comparisons=${#outputIDs[@]}
 
 # Sample sets for each patient
@@ -104,18 +107,19 @@ comparisons=${#outputIDs[@]}
 comparisonIndex=0
 while [ $comparisonIndex -lt $comparisons ]
 do
-  inputString="INPUT=/scratch/HeadNeck/DNAsequencing/mapped/${NormalIDs[$comparisonIndex]}.bam "
+  inputString="$temporaryDir/mapped/${NormalIDs[$comparisonIndex]}.bam "
   normalSample=${NormalIDs[$comparisonIndex]}
-  labelString="INPUT_LABEL=$normalSample "
-  patientID=${patientIDs[$comparisonIndex]}
+  labelString="$normalSample "
+  outputID=${outputIDs[$comparisonIndex]}
   while [[ $comparisonIndex -lt $comparisons && ${NormalIDs[$comparisonIndex]} == $normalSample ]]
   do
-    inputString=${inputString}"INPUT=/scratch/HeadNeck/DNAsequencing/mapped/${TumourIDs[$comparisonIndex]}.bam "
-    tumourSample=${TumourIDs[$comparisonIndex]}
-    labelString=${labelString}"INPUT_LABEL=$tumourSample "
+    tumourSample=${TumourIDs[$comparisonIndex]}	  
+    inputString=${inputString}"$temporaryDir/mapped/$tumourSample.bam "
+    labelString=${labelString}"$tumourSample "
     comparisonIndex=$((comparisonIndex+1))
   done
-  qsub -W depend=afterok:$allMapJobsString -v inputString="$inputString",labelString="$labelString",patientID=$patientID structural.pbs
+  labelString=${labelString%?} # Remove the last space.
+  qsub -W depend=afterok:$allMapJobsString -v inputString="$inputString",labelString="$labelString",genome=hg38,outputID=$outputID,projectDir="$projectDir",scriptsDir="$scriptsDir" -P $projectName $scriptsDir/structural.pbs
 done
 
 # 6: Purity And Ploidy
@@ -124,10 +128,10 @@ for((sampleIndex = 0; sampleIndex < ${#outputIDs[@]}; sampleIndex++))
 do # Each normal and tumour pair.
 {
   normalID=${NormalIDs[$sampleIndex]}
-  normalFile=/scratch/HeadNeck/DNAsequencing/mapped/$normalID.bam
+  normalFile=$temporaryDir/mapped/$normalID.bam
   tumourID=${TumourIDs[$sampleIndex]}
-  tumourFile=/scratch/HeadNeck/DNAsequencing/mapped/.bam
+  tumourFile=$temporaryDir/mapped/$tumourID.bam
   outputID=${outputIDs[$sampleIndex]}
-  qsub -W depend=afterok:$allMapJobsString -v normalFile=$normalFile,tumourFile=$tumourFile,normalID=$normalID,tumourID=$tumourID,outputID=$outputID purityPloidy.pbs
+  qsub -W depend=afterok:$allMapJobsString -v normalFile=$normalFile,tumourFile=$tumourFile,normalID=$normalID,tumourID=$tumourID,outputID=$outputID,projectDir="$projectDir",scriptsDir="$scriptsDir" -P $projectName $scriptsDir/purityPloidy.pbs
 }
 done

@@ -1,5 +1,9 @@
 #!/bin/bash
 
+projectName=$1
+projectDir=$2
+scriptsDir=$3
+
 while IFS=$'\t' read -r -a sampleNameAndFiles
 do
   R1reads=()
@@ -15,5 +19,5 @@ do
 
   R1reads=${R1reads[@]} # Convert from array to space-delimited string.
   R2reads=${R2reads[@]}
-  qsub -v R1="$R1reads",R2="$R2reads",SID=$sampleName removeDuplicates.pbs
-done < /project/HeadNeck/DNAsequencing/samplesInputs.txt
+  qsub -v R1="$R1reads",R2="$R2reads",SID=$sampleName,projectDir="$projectDir" -P $projectName $scriptsDir/removeDuplicates.pbs
+done < $projectDir/samplesInputs.txt

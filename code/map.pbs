@@ -1,14 +1,14 @@
 #!/bin/bash
-#PBS -P HeadNeck
-#PBS -l select=1:ncpus=8:mem=42GB
+#PBS -l select=1:ncpus=8:mem=48GB
 #PBS -l walltime=80:00:00
 
 module load bwa/0.7.17
 module load samtools
 
-alignPath=/project/HeadNeck/DNAsequencing/mapped/$SID.bam
+temporaryDir=${projectDir/project/scratch/}
+alignPath=$temporaryDir/mapped/$SID.bam
 
-echo "Time: $(date). Begin mapping $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+echo "Time: $(date). Begin mapping $SID." >> $projectDir/DNAlog.txt
 bwa mem  -t 8 -B 1 -O 1 -E 1 -L 2 -U 1 -M /project/HeadNeck/indexes/bwa/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna $R1 $R2 | samtools view -@ 8 -b -u - | samtools sort -@ 8 -l 4 -o $alignPath -
 samtools index $alignPath
-echo "Time: $(date). End mapping $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+echo "Time: $(date). End mapping $SID." >> $projectDir/DNAlog.txt

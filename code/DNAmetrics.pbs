@@ -1,14 +1,14 @@
 #!/bin/bash
-#PBS -P HeadNeck
+#PBS -q scavenger
 #PBS -l select=1:ncpus=1:mem=24GB
 #PBS -l walltime=8:00:00
 
 module load samtools
 module load picard
-module load R # Picard needs it.
+module load R/3.6.0 # Picard needs it.
 
 
-echo "Time: $(date). Begin metrics calculations $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+echo "Time: $(date). Begin metrics calculations $SID." >> $projectDir/DNAlog.txt
 startingReads=$(echo "$(zcat $originalReadsFile | wc -l) / 4" | bc)
 usefulReads=$(echo "$(zcat $noDuplicatesFile | wc -l) / 4" | bc)
 duplicationRate=$(echo "scale=2; x=($startingReads - $usefulReads) / $startingReads; print 0; x;" | bc) # Print leading zero, which bc can't do easily.
@@ -29,5 +29,5 @@ do
 done
 coverage=$(Rscript -e 'cat(median(as.numeric(commandArgs()[7:9])))' ${basesReads[@]})
 
-echo -e "$SID\t$startingReads\t$usefulReads\t$duplicationRate\t$alignedReads\t$mappedRate\t$insertSize\t$coverage" >> /project/HeadNeck/DNAsequencing/DNAmetrics.txt
-echo "Time: $(date). End metrics calculations $SID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+echo -e "$SID\t$startingReads\t$usefulReads\t$duplicationRate\t$alignedReads\t$mappedRate\t$insertSize\t$coverage" >> $projectDir/DNAmetrics.txt
+echo "Time: $(date). End metrics calculations $SID." >> $projectDir/DNAlog.txt

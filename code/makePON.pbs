@@ -1,0 +1,24 @@
+#!/bin/bash
+#PBS -P HeadNeck
+#PBS -l select=1:ncpus=1:mem=70GB
+#PBS -l walltime=30:00:00
+
+module load bwa
+module load sambamba
+module load R/3.6.0
+
+echo "Time: $(date). Begin structural PON creation." >> $projectDir/DNAlog.txt
+
+if [ $normals == "separate" ]
+then
+  assemblyPath=$temporaryDir/assembled/PONassembly.bam
+  SVpath=$projectDir/structuralVariants/HeadNeckAllHealthy.vcf.gz
+  labelString=${labelString// /,}
+  /home/dstr7320/software/gridss.sh --reference /project/HeadNeck/indexes/bwa/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --output $SVpath --assembly $assemblyPath --threads 8 --jar /home/dstr7320/software/gridss.jar --workingdir $projectDir/structuralVariants/ --blacklist /project/HeadNeck/problemRegions/hg38/ENCFF419RSJ.bed --labels $labelString $inputString
+  Rscript /home/dstr7320/software/extractForNormals.R --normalsVCF $projectDir/structuralVariants/HeadNeckAllHealthy.vcf.gz --outputDir $projectDir/structuralVariants/
+else # GRIDSS already done, extract normal from each VCF.
+  Rscript /home/dstr7320/software/create_gridss_pon.R --pondir $projectDir/structuralVariants --scriptdir /home/dstr7320/software/ --input $inputString
+  java -Xmx28g -cp /home/dstr7320/software/gridss.jar gridss.GeneratePonBedpe $inputString O=$projectDir/structuralVariants/gridss_pon_breakpoint.bedpe SBO=$projectDir/structuralVariants/gridss_pon_single_breakend.bed REFERENCE_SEQUENCE=/project/HeadNeck/indexes/bwa/hg19/Homo_sapiens_assembly19.fasta
+fi
+
+echo "Time: $(date). End structural PON creation." >> $projectDir/DNAlog.txt

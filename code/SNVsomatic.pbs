@@ -1,21 +1,23 @@
 #!/bin/bash
-#PBS -P HeadNeck
 #PBS -q scavenger
-#PBS -l select=1:ncpus=8:mem=40GB
-#PBS -l walltime=22:00:00
+#PBS -l select=1:ncpus=8:mem=55GB
+#PBS -l walltime=16:00:00
 
 module load strelka/2.9.9
 module load bcftools
+temporaryDir=${projectDir/project/scratch/}
 
-echo "Time: $(date). Begin somatic Single Nucleotide Variant detection for $outputID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
-if [ -d /scratch/HeadNeck/s/$outputID/ ] # Strelka will throw an error. Directory must be empty.
+echo "Time: $(date). Begin somatic Single Nucleotide Variant detection for $outputID." >> $projectDir/DNAlog.txt
+if [ -d $temporaryDir/s/$outputID/ ] # Strelka will throw an error. Directory must be empty.
 then
-  rm -r /scratch/HeadNeck/s/$outputID/
+  rm -r $temporaryDir/s/$outputID/
 fi
-configureStrelkaSomaticWorkflow.py --referenceFasta=/project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --normalBam=$normalFile --tumorBam=$tumourFile --runDir=/scratch/HeadNeck/s/$outputID/
-/scratch/HeadNeck/s/$outputID/runWorkflow.py -m local -j 8
-rename somatic ${outputID}.somatic /scratch/HeadNeck/s/$outputID/results/variants/*
-mv /scratch/HeadNeck/s/$outputID/results/variants/* /project/HeadNeck/DNAsequencing/singleNucleotideVariants/
-bcftools view -f PASS -o /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${outputID}.somatic.snvs.candidates.vcf.gz -O z /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${outputID}.somatic.snvs.vcf.gz
-bcftools view -f PASS -o /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${outputID}.somatic.indels.candidates.vcf.gz -O z /project/HeadNeck/DNAsequencing/singleNucleotideVariants/${outputID}.somatic.indels.vcf.gz
-echo "Time: $(date). Complete somatic Single Nucleotide Variant detection for $outputID." >> /project/HeadNeck/DNAsequencing/DNAlog.txt
+configureStrelkaSomaticWorkflow.py --referenceFasta=/project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --normalBam=$normalFile --tumorBam=$tumourFile --runDir=$temporaryDir/s/$outputID/
+$temporaryDir/s/$outputID/runWorkflow.py -m local -j 8
+rename somatic ${outputID}.somatic $temporaryDir/s/$outputID/results/variants/*
+mv $temporaryDir/s/$outputID/results/variants/* $projectDir/singleNucleotideVariants/
+bcftools view -f PASS -o $projectDir/singleNucleotideVariants/${outputID}.somatic.snvs.candidates.vcf.gz -O z $projectDir/singleNucleotideVariants/${outputID}.somatic.snvs.vcf.gz
+bcftools view -f PASS -o $projectDir/singleNucleotideVariants/${outputID}.somatic.indels.candidates.vcf.gz -O z $projectDir/singleNucleotideVariants/${outputID}.somatic.indels.vcf.gz
+bcftools index -t $projectDir/singleNucleotideVariants/${outputID}.somatic.snvs.candidates.vcf.gz
+bcftools index -t $projectDir/singleNucleotideVariants/${outputID}.somatic.indels.candidates.vcf.gz
+echo "Time: $(date). Complete somatic Single Nucleotide Variant detection for $outputID." >> $projectDir/DNAlog.txt
