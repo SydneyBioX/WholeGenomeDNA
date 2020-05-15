@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#PBS -l ncpus=8
+#PBS -l mem=150GB
+#PBS -l walltime=28:00:00
+#PBS -l storage=scratch/hm82
+
+module load bwa
+module load samtools
+module load R/3.6.1
+
+FASTA=/scratch/hm82/Reference/hs38DH.fasta
+blacklist=/home/562/ds6924/databases/ENCFF419RSJ.bed
+
+assemblyPath=$projectDir/assembled/${outputID}assembly.bam
+SVpath=$projectDir/structuralVariants/${outputID}structural.vcf.gz
+labelString=${labelString// /,}
+
+echo "Time: $(date). Begin structural variant assembly for $outputID" >> $projectDir/DNAlog.txt
+/home/562/ds6924/software/gridss.sh --steps Assemble --reference $FASTA --output $SVpath --assembly $assemblyPath --threads 8 --jar /home/562/ds6924/software/gridss.jar --workingdir /scratch/hm82/temporary/ --jvmheap 140g --blacklist $blacklist --labels $labelString $inputString
+echo "Time: $(date). Complete structural variant assembly for $outputID." >> $projectDir/DNAlog.txt

@@ -1,0 +1,22 @@
+#!/bin/bash
+#PBS -P hm82
+#PBS -l ncpus=1
+#PBS -l mem=20GB
+#PBS -l walltime=2:00:00
+
+module load bwa
+module load R/3.6.1
+module load samtools
+SVfolder=/scratch/hm82/OSCC/structuralVariants/
+SVfiles=$(find $SVfolder -name \*structural.vcf.gz)
+SVfilesText=${SVfiles//\/scratch/INPUT=\/scratch}
+ordinalText=($(seq 1 1 10))
+ordinalText=( "${ordinalText[@]/#/NORMAL_ORDINAL=}" )
+ordinalText=${ordinalText[@]}
+
+echo "Time: $(date). Begin structural PON BEDPE creation." >> $projectDir/DNAlog.txt
+
+java -Xmx16g -cp /home/562/ds6924/software/gridss.jar gridss.GeneratePonBedpe NORMAL_ORDINAL=0 $SVfilesText REFERENCE_SEQUENCE=/scratch/hm82/Reference/hs38DH.fasta OUTPUT_BED=$SVfolder/patientNormals.bed OUTPUT_BEDPE=$SVfolder/patientNormals.bedpe
+java -Xmx16g -cp /home/562/ds6924/software/gridss.jar gridss.GeneratePonBedpe $ordinalText INPUT=$SVfolder/HeadNeckAllHealthy.vcf.gz REFERENCE_SEQUENCE=/scratch/hm82/Reference/hs38DH.fasta INPUT_BED=$SVfolder/patientNormals.bed INPUT_BEDPE=$SVfolder/patientNormals.bedpe OUTPUT_BED=gridss_pon_single_breakend.bed OUTPUT_BEDPE=$SVfolder/gridss_pon_breakpoint.bedpe
+
+echo "Time: $(date). End structural PON BEDPE creation." >> $projectDir/DNAlog.txt

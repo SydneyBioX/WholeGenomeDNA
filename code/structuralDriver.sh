@@ -3,43 +3,14 @@
 projectName=$1
 projectDir=$2
 scriptsDir=$3
-temporaryDir=${projectDir/project/scratch/}
 
 # Aligner indices and genome indicies have to be in the same directory.
 # ln -s /project/StatBio/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna /project/StatBio/indexes/bwa/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
 # samtools faidx /project/StatBio/indexes/bwa/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
+# Since version 2.9, an image file is needed for in-process alignment.
+# java -cp /home/562/ds6924/software/gridss.jar gridss.PrepareReference /scratch/hm82/Reference/hs38DH.fasta
 
-# Create a panel of normals first.
-
-# sampleIDs=$(cut -f 1 $projectDir/samplesInputsNotCancer.txt) 
-# sampleTypes=$(cut -f 2 $projectDir/samplesInputsNotCancer.txt)
-# sampleIDs=($sampleIDs)
-# sampleTypes=($sampleTypes)
-# normalFiles=()
-# SID=()
-# for((sampleIndex = 0; sampleIndex < ${#sampleIDs[@]}; sampleIndex++))
-# do # Each normal sample versus the human genome reference.
-# {
-#   sampleID=${sampleIDs[$sampleIndex]}	  
-#   SID+=($sampleID)
-#   normalFiles+=($projectDir/mapped/$sampleID.bam)
-# }
-# done
-# normalFiles=${normalFiles[@]}
-# SID=${SID[@]}
-# qsub -v inputString="$normalFiles",labelString="$SID",projectDir="$projectDir",temporaryDir="$temporaryDir",normals=separate $scriptsDir/makePON.pbs
-
-# patientIDs=$(cut -f 1 $projectDir/patientsSamplesTCGAyoungNotHMS.txt)
-# patientIDs=($patientIDs)
-# SVfiles=()
-# for((sampleIndex = 0; sampleIndex < ${#patientIDs[@]}; sampleIndex++))
-# do
-# {
-#   SVfiles+=(INPUT=$projectDir/structuralVariants/${patientIDs[$sampleIndex]}structural.vcf.gz)
-# }
-# done
-# SVfiles=${SVfiles[@]}
-# qsub -v inputString="$SVfiles",normals=matched,projectDir="$projectDir" $scriptsDir/makePON.pbs
+# Create a panel of normals first. See PONdriver.sh.
 
 normalIDs=()
 tumourIDs=()
@@ -47,9 +18,9 @@ outputIDs=()
 
 while IFS=$'\t' read -r -a patientIDandComparisonSamples
 do
-  normalIDs+=(${patientIDandComparisonSamples[2]})
-  tumourIDs+=(${patientIDandComparisonSamples[3]})
-  outputIDs+=(${patientIDandComparisonSamples[4]})
+  normalIDs+=(${patientIDandComparisonSamples[1]})
+  tumourIDs+=(${patientIDandComparisonSamples[2]})
+  outputIDs+=(${patientIDandComparisonSamples[3]})  
 done < $projectDir/patientsSamples.txt
 comparisons=${#outputIDs[@]}
 
@@ -58,18 +29,21 @@ comparisons=${#outputIDs[@]}
 comparisonIndex=0
 while [ $comparisonIndex -lt $comparisons ]
 do
-  inputString="$temporaryDir/mapped/${normalIDs[$comparisonIndex]}.bam "
+  inputString="$projectDir/Final_bams/${normalIDs[$comparisonIndex]}.final.bam "
   normalSample=${normalIDs[$comparisonIndex]}
   labelString="$normalSample "
   outputID=${outputIDs[$comparisonIndex]}
   while [[ $comparisonIndex -lt $comparisons && ${normalIDs[$comparisonIndex]} == $normalSample ]]
   do
     tumourSample=${tumourIDs[$comparisonIndex]}	  
-    inputString=${inputString}"$temporaryDir/mapped/$tumourSample.bam "
+    inputString=${inputString}"$projectDir/Final_bams/$tumourSample.final.bam "
     labelString=${labelString}"$tumourSample "
     comparisonIndex=$((comparisonIndex+1))
   done
   labelString=${labelString%?} # Remove the last space.
   inputString=${inputString%?} # Remove the last space.
-  qsub -v inputString="$inputString",labelString="$labelString",genome=hg38,outputIDs=$outputID,projectDir="$projectDir" -P $projectName $scriptsDir/structural.pbs
+  preprocessID=$(qsub -v inputString="$inputString",labelString="$labelString",outputID=$outputID,projectDir="$projectDir" -P $projectName $scriptsDir/structuralPreprocess.pbs)
+  assembleID=$(qsub -W depend=afterok:$preprocessID -v inputString="$inputString",labelString="$labelString",outputID=$outputID,projectDir="$projectDir" -P $projectName $scriptsDir/structuralAssemble.pbs)
+  qsub -W depend=afterok:$assembleID -v inputString="$inputString",labelString="$labelString",outputID=$outputID,projectDir="$projectDir" -P $projectName $scriptsDir/structuralCall.pbs
+  echo qsub -W depend=afterok:$jobID -v outputID=$outputID,projectDir="$projectDir" -P $projectName $scriptsDir/structuralAnnotate.pbs
 done

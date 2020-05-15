@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -P hm82
+#PBS -l ncpus=8
+#PBS -l mem=32GB
+#PBS -l walltime=10:00:00
+
+module load bwa
+module load R/3.6.1
+module load samtools
+
+echo "Time: $(date). Begin structural PON calling." >> $projectDir/DNAlog.txt
+
+assemblyPath=$projectDir/assembled/PONassembly.bam
+SVpath=$projectDir/structuralVariants/HeadNeckAllHealthy.vcf.gz
+labelString=${labelString// /,}
+/home/562/ds6924/software/gridss.sh --steps Call --reference /scratch/hm82/Reference/hs38DH.fasta --output $SVpath --assembly $assemblyPath --threads 8 --jar /home/562/ds6924/software/gridss.jar --workingdir /scratch/hm82/temporary/ --blacklist /home/562/ds6924/databases/ENCFF419RSJ.bed --labels $labelString $inputString
+
+echo "Time: $(date). End structural PON calling." >> $projectDir/DNAlog.txt
