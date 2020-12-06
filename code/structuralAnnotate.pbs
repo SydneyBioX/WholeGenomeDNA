@@ -1,24 +1,23 @@
 #!/bin/bash
 
-#PBS -l ncpus=1
-#PBS -l mem=30GB
-#PBS -l walltime=0:50:00
-#PBS -l storage=scratch/hm82
+#PBS -l ncpus=4
+#PBS -l mem=64GB
+#PBS -l walltime=8:00:00
 
-module load R/3.6.1
+module load R/3.6.0
 module load java
-module load bwa
-
-genome=/scratch/hm82/Reference/hs38DH.fasta
-BSgenome=BSgenome.Hsapiens.UCSC.hg38
+module load kraken2
+module load blast
+module load repeatmasker
+GRIDSS_JAR=~/software/testing/gridss/target/gridss-2.10.0-gridss-jar-with-dependencies.jar
 
 SVpath=$projectDir/structuralVariants/${outputID}structural.vcf.gz # Replace mapped directory by variants directory in path.
-somaticSVpath=${SVpath/.vcf/Somatic.vcf}
-retroSVpath=${SVpath/.vcf.gz/AnnotatedRetro.vcf} # Annotated with Retrotransposons.
+retroSVpath=${SVpath/.vcf.gz/AnnotatedRetro.vcf.gz} # Annotated with Retrotransposons.
 retroViralSVpath=${retroSVpath/AnnotatedRetro/AnnotatedRetroViral} # Annotated with Viruses.
 
 echo "Time: $(date). Begin structural variant filtering and annotation for $outputID" >> $projectDir/DNAlog.txt
-Rscript /home/562/ds6924/software/gridss_somatic_filter.R --pondir $projectDir/structuralVariants/ --ref $BSgenome --input $SVpath --output $somaticSVpath --scriptdir /home/562/ds6924/software
-java -Xmx26g -cp /home/562/ds6924/software/gridss.jar gridss.AnnotateInsertedSequence THREADS=1 REFERENCE_SEQUENCE=$genome INPUT=$somaticSVpath OUTPUT=$retroSVpath ALIGNMENT=REPLACE REPEAT_MASKER_BED=/home/562/ds6924/databases/hg38repeats.bed
-java -Xmx26g -cp /home/562/ds6924/software/gridss.jar gridss.AnnotateInsertedSequence THREADS=1 REFERENCE_SEQUENCE=/home/562/ds6924/sequences/human_virus.fa ALIGNMENT=APPEND INPUT=$retroSVpath OUTPUT=$retroViralSVpath
-echo "Time: $(date). Complete structural variant filtering and annotation for $outputID." >> $projectDir/DNAlog.txt
+~/software/testing/gridss/scripts/gridss_annotate_vcf_repeatmasker.sh -o $retroSVpath -j ~/software/testing/gridss/target/gridss-2.10.0-gridss-jar-with-dependencies.jar -t 4 -w /tmp/ $SVpath
+~/software/testing/gridss/scripts/gridss_annotate_vcf_kraken2.sh -j $GRIDSS_JAR -t 4 --kraken2db /project/HeadNeck/databases/viralForKraken --output $retroViralSVpath $retroSVpath
+
+rm $retroSVpath
+echo "Time $(date). Complete structural variant filtering and annotation for $outputID." >> $projectDir/DNAlog.txt

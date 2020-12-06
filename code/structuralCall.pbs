@@ -1,22 +1,23 @@
 #!/bin/bash
 
 #PBS -l ncpus=8
-#PBS -l mem=32GB
-#PBS -l walltime=4:00:00
+#PBS -l mem=80GB
+#PBS -l walltime=8:00:00
 #PBS -l storage=scratch/hm82
 
 module load bwa
 module load samtools
 module load R/3.6.1
+module load htslib
 
 FASTA=/scratch/hm82/Reference/hs38DH.fasta
 blacklist=/home/562/ds6924/databases/ENCFF419RSJ.bed
 BSgenome=BSgenome.Hsapiens.UCSC.hg38
-
+FASTAgenome=/scratch/hm82/Reference/hs38DH.fasta
 assemblyPath=$projectDir/assembled/${outputID}assembly.bam
 SVpath=$projectDir/structuralVariants/${outputID}structural.vcf.gz
 labelString=${labelString// /,}
 
 echo "Time: $(date). Begin structural variant calling for $outputID" >> $projectDir/DNAlog.txt
-/home/562/ds6924/software/gridss.sh --steps Call --reference $FASTA --output $SVpath --assembly $assemblyPath --threads 8 --jar /home/562/ds6924/software/gridss.jar --workingdir /scratch/hm82/temporary/ --jvmheap 28g --blacklist $blacklist --labels $labelString $inputString
+/home/562/ds6924/software/gridss.sh --steps Call --reference $FASTA --output $SVpath --assembly $assemblyPath --threads 8 --jar /home/562/ds6924/software/gridss.jar --workingdir /scratch/hm82/temporary/ --blacklist $blacklist --labels $labelString $inputString
 echo "Time: $(date). Complete structural variant calling for $outputID." >> $projectDir/DNAlog.txt

@@ -1,21 +1,15 @@
 #!/bin/bash
-#PBS -l select=1:ncpus=4:mem=32GB
-#PBS -l walltime=1:00:00
+#PBS -l ncpus=4
+#PBS -l mem=55GB
+#PBS -l walltime=5:00:00
+#PBS -l storage=scratch/hm82
 
-module load R/3.6.0 # Segmentation is done with the copynumber package available from Bioconductor.
-module load circos
-module load gatk
+module load R/3.6.1 # Segmentation is done with the copynumber package available from Bioconductor.
 
-temporaryDir=${projectDir/project/scratch/}
-#echo "Time: $(date). Begin purity and ploidy estimation $outputID." >> $projectDir/DNAlog.txt
-#java -jar /home/dstr7320/software/amber-2.5.jar com.hartwig.hmftools.amber.AmberApplication -threads 4 -tumor $tumourID -tumor_bam $tumourFile -reference $normalID -reference_bam $normalFile -ref_genome /project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna -bed /project/HeadNeck/databases/hg38/GermlineHetPon.hg38.bed.gz -output_dir $projectDir/purityPloidy/amber
-#java -jar /home/dstr7320/software/cobalt-1.7.jar com.hartwig.hmftools.cobalt.CountBamLinesApplication -threads 4 -tumor $tumourID -tumor_bam $tumourFile -reference $normalID -reference_bam $normalFile -gc_profile /project/HeadNeck/databases/hg38/GC_profile.hg38.1000bp.cnp -output_dir $projectDir/purityPloidy/cobalt
+echo "Time: $(date). Begin purity and ploidy estimation $tumourID." >> $projectDir/DNAlog.txt
 
-# Get Strelka output into right format for PURPLE.
-#gatk -T CombineVariants -R /project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --genotypemergeoption unsorted -V:snvs $projectDir/singleNucleotideVariants/${outputID}.somatic.snvs.candidates.vcf.gz -V:indels $projectDir/singleNucleotideVariants/${outputID}.somatic.indels.candidates.vcf.gz -o $temporaryDir/$outputID.merged.vcf
-#sed -i s/NORMAL/$normalID/g $temporaryDir/$outputID.merged.vcf
-#sed -i s/TUMOR/$tumourID/g $temporaryDir/$outputID.merged.vcf
-#java -cp /home/dstr7320/software/purple-2.34.jar com.hartwig.hmftools.purple.tools.AnnotateStrelkaWithAllelicDepth -in $temporaryDir/$outputID.merged.vcf -out $temporaryDir/$outputID.merged.annotated.vcf
+java -jar /home/562/ds6924/software/amber-3.3.jar com.hartwig.hmftools.amber.AmberApplication -threads 4 -tumor $tumourID -tumor_bam $tumourFile -reference $normalID -reference_bam $normalFile -ref_genome /scratch/hm82/Reference/hs38DH.fasta -loci /home/562/ds6924/databases/GermlineHetPon.hg38.vcf.gz -output_dir $projectDir/purityPloidy/amber
+java -jar /home/562/ds6924/software/cobalt-1.8.jar com.hartwig.hmftools.cobalt.CountBamLinesApplication -threads 4 -tumor $tumourID -tumor_bam $tumourFile -reference $normalID -reference_bam $normalFile -gc_profile /home/562/ds6924/databases/GC_profile.hg38.1000bp.cnp -output_dir $projectDir/purityPloidy/cobalt
+java -jar /home/562/ds6924/software/purple-2.47.jar -threads 4 -tumor $tumourID -reference $normalID -amber $projectDir/purityPloidy/amber -cobalt $projectDir/purityPloidy/cobalt -ref_genome /scratch/hm82/Reference/hs38DH.fasta -gc_profile /home/562/ds6924/databases/GC_profile.hg38.1000bp.cnp -output_dir $projectDir/purityPloidy/purple -somatic_vcf $projectDir/Final_Somatic-ShortV_VCFs/$vcfFile -driver_catalog -driver_gene_panel /home/562/ds6924/databases/DriverGenePanel.hg38.tsv -hotspots /home/562/ds6924/databases/KnownHotspots.hg38.liftover.vcf -structural_vcf $projectDir/structuralVariants/${tumourID}structuralAnnotatedSomaticFiltered.vcf.gz -sv_recovery_vcf $projectDir/structuralVariants/${tumourID}structuralAnnotatedSomaticAll.vcf.gz
 
-java -jar /home/dstr7320/software/purple-2.34.jar -threads 4 -tumor $tumourID -reference $normalID -amber $projectDir/purityPloidy/amber -cobalt $projectDir/purityPloidy/cobalt -ref_genome /project/HeadNeck/sequence/hg38/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna -gc_profile /project/HeadNeck/databases/hg38/GC_profile.hg38.1000bp.cnp -output_dir $projectDir/purityPloidy/purple -circos /usr/local/circos/0.69-3/bin/circos -somatic_vcf $temporaryDir/$outputID.merged.annotated.vcf -structural_vcf $projectDir/structuralVariants/${outputID}structuralAnnotatedRetroViralSomatic.vcf.bgz
-#echo "Time: $(date). End purity and ploidy estimation $outputID." >> $projectDir/DNAlog.txt
+echo "Time: $(date). End purity and ploidy estimation $tumourID." >> $projectDir/DNAlog.txt

@@ -9,8 +9,9 @@ do # Each normal sample versus the human genome reference.
   normalFiles+=($projectDir/Final_bams/$sampleID.final.bam)
 }
 done
-sampleIDs=${sampleIDs[@]}
+
 normalFiles=${normalFiles[@]}
+sampleIDs=${sampleIDs[@]}
 
 preprocessID=$(qsub -v inputString="$normalFiles",labelString="$sampleIDs",projectDir="$projectDir" $scriptsDir/makePONpreprocess.pbs)
 assembleID=$(qsub -W depend=afterok:$preprocessID -v inputString="$normalFiles",labelString="$sampleIDs",projectDir="$projectDir" $scriptsDir/makePONassemble.pbs)

@@ -44,6 +44,5 @@ do
   inputString=${inputString%?} # Remove the last space.
   preprocessID=$(qsub -v inputString="$inputString",labelString="$labelString",outputID=$outputID,projectDir="$projectDir" -P $projectName $scriptsDir/structuralPreprocess.pbs)
   assembleID=$(qsub -W depend=afterok:$preprocessID -v inputString="$inputString",labelString="$labelString",outputID=$outputID,projectDir="$projectDir" -P $projectName $scriptsDir/structuralAssemble.pbs)
-  qsub -W depend=afterok:$assembleID -v inputString="$inputString",labelString="$labelString",outputID=$outputID,projectDir="$projectDir" -P $projectName $scriptsDir/structuralCall.pbs
-  echo qsub -W depend=afterok:$jobID -v outputID=$outputID,projectDir="$projectDir" -P $projectName $scriptsDir/structuralAnnotate.pbs
+  callID=$(qsub -W depend=afterok:$assembleID -v inputString="$inputString",labelString="$labelString",outputID=$outputID,projectDir="$projectDir" -P $projectName $scriptsDir/structuralCall.pbs)
 done

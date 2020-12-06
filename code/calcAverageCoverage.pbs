@@ -1,0 +1,11 @@
+#!/bin/bash
+#PBS -P hm82
+#PBS -q normal
+#PBS -l ncpus=1
+#PBS -l mem=8GB
+#PBS -l walltime=1:00:00
+
+fileName=$(basename $alignmentsFile)
+sampleID=${fileName/$delimiter/}
+/home/562/ds6924/software/mosdepth -n --chrom chr1 $sampleID $alignmentsFile
+

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#PBS -l ncpus=1
+#PBS -l mem=20GB
+#PBS -l walltime=00:10:00
+#PBS -l storage=scratch/hm82
+
+FASTA=/scratch/hm82/Reference/hs38DH.fasta
+breakSpots=/home/562/ds6924/databases/KnownFusionPairs.hg38.bedpe
+allSamplesFile=$projectDir/structuralVariants/${outputID}structuralAnnotatedRetroViral.vcf.gz
+allSomaticFile=$projectDir/structuralVariants/${tumourID}structuralAnnotatedSomaticAll.vcf.gz
+filteredSomaticFile=$projectDir/structuralVariants/${tumourID}structuralAnnotatedSomaticFiltered.vcf.gz
+
+module load htslib
+
+echo "Time: $(date). Begin structural somatic variant filtering using GRIPSS for $tumourID" >> $projectDir/DNAlog.txt
+java -Xms6g -Xmx18g -cp /home/562/ds6924/software/gripss-1.9.jar com.hartwig.hmftools.gripss.GripssApplicationKt -ref_genome $FASTA -breakpoint_hotspot $breakSpots -breakend_pon $projectDir/structuralVariants/gridss_pon_single_breakend.bed -breakpoint_pon $projectDir/structuralVariants/gridss_pon_breakpoint.bedpe -input_vcf $allSamplesFile -reference $normalID -tumor $tumourID -output_vcf $allSomaticFile # Full set of somatic variants.
+java -Xms6g -Xmx18g -cp /home/562/ds6924/software/gripss-1.9.jar com.hartwig.hmftools.gripss.GripssHardFilterApplicationKt -input_vcf $allSomaticFile -output_vcf $filteredSomaticFile # High confidence variants.
+echo "Time: $(date). Complete structural somatic variant filtering using GRIPSS for $tumourID" >> $projectDir/DNAlog.txt

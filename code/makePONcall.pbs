@@ -1,8 +1,9 @@
 #!/bin/bash
-#PBS -P hm82
+#PBS -P oj47
 #PBS -l ncpus=8
-#PBS -l mem=32GB
-#PBS -l walltime=10:00:00
+#PBS -l mem=110GB
+#PBS -l walltime=18:00:00
+#PBS -l storage=scratch/hm82
 
 module load bwa
 module load R/3.6.1
