@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#PBS -P hm82
+#PBS -l walltime=12:00:00
+#PBS -l ncpus=1
+#PBS -l mem=4GB
+#PBS -q normal
+
+outPrefix=${inputFilePath/R[12].fastq.gz/}
+suffix=${inputFilePath: -12}
+zcat $inputFilePath | awk -v outPrefix=$outPrefix -v suffix=$suffix '
+BEGIN {FS = ":"}
+{
+  flowcell=$3; lane=$4;
+  print | "gzip > "outPrefix""flowcell"_L00"lane""suffix;
+  for (i = 1; i <= 3; i++)
+  {
+    getline;
+    print | "gzip > "outPrefix""flowcell"_L00"lane""suffix;
+  }
+}'
